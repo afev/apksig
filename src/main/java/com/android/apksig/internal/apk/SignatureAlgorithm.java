@@ -150,7 +150,16 @@ public enum SignatureAlgorithm {
             "DSA",
             Pair.of("SHA256withDSA", null),
             AndroidSdkVersion.P,
-            AndroidSdkVersion.INITIAL_RELEASE);
+            AndroidSdkVersion.INITIAL_RELEASE),
+
+    GOST2012_WITH_GOST2012256(
+            0xff00,
+            ContentDigestAlgorithm.GOST2012256,
+            "GOST3410_2012_256",
+            Pair.of("GOST3411_2012_256withGOST3410_2012_256", null),
+            AndroidSdkVersion.N,
+            AndroidSdkVersion.INITIAL_RELEASE
+    );
 
     private final int mId;
     private final String mJcaKeyAlgorithm;

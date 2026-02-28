@@ -126,7 +126,7 @@ public class ApkSignerTool {
      */
     private static void addProviders() {
         try {
-            Security.addProvider(new org.conscrypt.OpenSSLProvider());
+            // Security.addProvider(new org.conscrypt.OpenSSLProvider());
         } catch (UnsatisfiedLinkError e) {
             // This is expected if the library path does not include the native conscrypt library;
             // the default providers support all but PSS algorithms.
@@ -515,6 +515,8 @@ public class ApkSignerTool {
         boolean warningsTreatedAsErrors = false;
         boolean verifySourceStamp = false;
         File v4SignatureFile = null;
+        List<ProviderInstallSpec> providers = new ArrayList<>();
+        ProviderInstallSpec providerParams = new ProviderInstallSpec();
         OptionsParser optionsParser = new OptionsParser(params);
         String optionName;
         String optionOriginalForm = null;
@@ -553,6 +555,15 @@ public class ApkSignerTool {
             } else if ("stamp-cert-digest".equals(optionName)) {
                 sourceCertDigest = optionsParser.getRequiredValue(
                         "Expected source stamp certificate digest");
+            } else if ("provider-class".equals(optionName)) {
+                providerParams.className =
+                        optionsParser.getRequiredValue("JCA Provider class name");
+            } else if ("provider-arg".equals(optionName)) {
+                providerParams.constructorParam =
+                        optionsParser.getRequiredValue("JCA Provider constructor argument");
+            } else if ("provider-pos".equals(optionName)) {
+                providerParams.position =
+                        optionsParser.getRequiredIntValue("JCA Provider position");
             } else {
                 throw new ParameterException(
                         "Unsupported option: " + optionOriginalForm + ". See --help for supported"
@@ -560,6 +571,11 @@ public class ApkSignerTool {
             }
         }
         params = optionsParser.getRemainingParams();
+
+        if (!providerParams.isEmpty()) {
+            providers.add(providerParams);
+        }
+        providerParams = null;
 
         if (inputApk != null) {
             // Input APK has been specified in preceding parameters. We don't expect any more
@@ -585,6 +601,11 @@ public class ApkSignerTool {
             throw new ParameterException(
                     "Min API Level (" + minSdkVersion + ") > max API Level (" + maxSdkVersion
                             + ")");
+        }
+
+        // Install additional JCA Providers
+        for (ProviderInstallSpec providerInstallSpec : providers) {
+            providerInstallSpec.installProvider();
         }
 
         ApkVerifier.Builder apkVerifierBuilder = new ApkVerifier.Builder(inputApk);

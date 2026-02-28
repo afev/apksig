@@ -20,6 +20,7 @@ import static com.android.apksig.Constants.OID_RSA_ENCRYPTION;
 import static com.android.apksig.internal.apk.ContentDigestAlgorithm.CHUNKED_SHA256;
 import static com.android.apksig.internal.apk.ContentDigestAlgorithm.CHUNKED_SHA512;
 import static com.android.apksig.internal.apk.ContentDigestAlgorithm.VERITY_CHUNKED_SHA256;
+import static com.android.apksig.internal.apk.ContentDigestAlgorithm.GOST2012256;
 
 import com.android.apksig.ApkVerifier;
 import com.android.apksig.KeyConfig;
@@ -268,7 +269,8 @@ public class ApkSigningBlockUtils {
         Set<ContentDigestAlgorithm> oneMbChunkBasedAlgorithm = new HashSet<>();
         for (ContentDigestAlgorithm digestAlgorithm : digestAlgorithms) {
             if (digestAlgorithm == ContentDigestAlgorithm.CHUNKED_SHA256
-                    || digestAlgorithm == ContentDigestAlgorithm.CHUNKED_SHA512) {
+                    || digestAlgorithm == ContentDigestAlgorithm.CHUNKED_SHA512
+                    || digestAlgorithm == ContentDigestAlgorithm.GOST2012256) {
                 oneMbChunkBasedAlgorithm.add(digestAlgorithm);
             }
         }
@@ -279,7 +281,10 @@ public class ApkSigningBlockUtils {
                 contentDigests);
 
         if (digestAlgorithms.contains(VERITY_CHUNKED_SHA256)) {
-            computeApkVerityDigest(beforeCentralDir, centralDir, eocd, contentDigests);
+            computeApkVerityDigest(beforeCentralDir, centralDir, eocd, contentDigests, VERITY_CHUNKED_SHA256);
+        }
+        if (digestAlgorithms.contains(GOST2012256)) {
+            computeApkVerityDigest(beforeCentralDir, centralDir, eocd, contentDigests, GOST2012256);
         }
         return contentDigests;
     }
@@ -597,27 +602,27 @@ public class ApkSigningBlockUtils {
 
     @SuppressWarnings("ByteBufferBackingArray")
     private static void computeApkVerityDigest(DataSource beforeCentralDir, DataSource centralDir,
-            DataSource eocd, Map<ContentDigestAlgorithm, byte[]> outputContentDigests)
+            DataSource eocd, Map<ContentDigestAlgorithm, byte[]> outputContentDigests, ContentDigestAlgorithm digestAlgorithm)
             throws IOException, NoSuchAlgorithmException {
-        ByteBuffer encoded = createVerityDigestBuffer(true);
+        ByteBuffer encoded = createVerityDigestBuffer(true, digestAlgorithm);
         // Use 0s as salt for now.  This also needs to be consistent in the fsverify header for
         // kernel to use.
-        try (VerityTreeBuilder builder = new VerityTreeBuilder(new byte[8])) {
+        try (VerityTreeBuilder builder = new VerityTreeBuilder(new byte[8], digestAlgorithm.getJcaMessageDigestAlgorithm())) {
             byte[] rootHash = builder.generateVerityTreeRootHash(beforeCentralDir, centralDir,
                     eocd);
             encoded.put(rootHash);
             encoded.putLong(beforeCentralDir.size() + centralDir.size() + eocd.size());
-            outputContentDigests.put(VERITY_CHUNKED_SHA256, encoded.array());
+            outputContentDigests.put(digestAlgorithm, encoded.array());
         }
     }
 
-    private static ByteBuffer createVerityDigestBuffer(boolean includeSourceDataSize) {
+    private static ByteBuffer createVerityDigestBuffer(boolean includeSourceDataSize, ContentDigestAlgorithm digestAlgorithm) {
         // FORMAT:
         // OFFSET       DATA TYPE  DESCRIPTION
         // * @+0  bytes uint8[32]  Merkle tree root hash of SHA-256
         // * @+32 bytes int64      (optional) Length of source data
         int backBufferSize =
-                VERITY_CHUNKED_SHA256.getChunkDigestOutputSizeBytes();
+                digestAlgorithm.getChunkDigestOutputSizeBytes();
         if (includeSourceDataSize) {
             backBufferSize += Long.SIZE / Byte.SIZE;
         }
@@ -642,10 +647,10 @@ public class ApkSigningBlockUtils {
     @SuppressWarnings("ByteBufferBackingArray")
     public static VerityTreeAndDigest computeChunkVerityTreeAndDigest(DataSource dataSource)
             throws IOException, NoSuchAlgorithmException {
-        ByteBuffer encoded = createVerityDigestBuffer(false);
+        ByteBuffer encoded = createVerityDigestBuffer(false, ContentDigestAlgorithm.VERITY_CHUNKED_SHA256);
         // Use 0s as salt for now.  This also needs to be consistent in the fsverify header for
         // kernel to use.
-        try (VerityTreeBuilder builder = new VerityTreeBuilder(null)) {
+        try (VerityTreeBuilder builder = new VerityTreeBuilder(null, ContentDigestAlgorithm.VERITY_CHUNKED_SHA256.getJcaMessageDigestAlgorithm())) {
             ByteBuffer tree = builder.generateVerityTree(dataSource);
             byte[] rootHash = builder.getRootHashFromTree(tree);
             encoded.put(rootHash);

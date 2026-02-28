@@ -13,6 +13,14 @@ application {
     mainClassName 'com.android.apksigner.ApkSignerTool'
 }
 
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'com.android.apksigner.ApkSignerTool'
+        )
+    }
+}
+
 sourceSets {
     main {
         java {
@@ -50,4 +58,5 @@ dependencies {
     testImplementation 'junit:junit:4.13'
     testImplementation 'org.bouncycastle:bcprov-jdk15on:1.68'
     testImplementation 'org.conscrypt:conscrypt-openjdk-uber:2.5.1'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 }

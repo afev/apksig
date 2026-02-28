@@ -28,7 +28,10 @@ public enum ContentDigestAlgorithm {
     VERITY_CHUNKED_SHA256(3, "SHA-256", 256 / 8),
 
     /** Non-chunk SHA2-256. */
-    SHA256(4, "SHA-256", 256 / 8);
+    SHA256(4, "SHA-256", 256 / 8),
+
+    /** GOST 34.11-2012 (256). */
+    GOST2012256(0xf, "GOST3411_2012_256", 256 / 8);
 
     private final int mId;
     private final String mJcaMessageDigestAlgorithm;

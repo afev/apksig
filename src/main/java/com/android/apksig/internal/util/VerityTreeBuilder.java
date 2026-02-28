@@ -18,6 +18,7 @@ package com.android.apksig.internal.util;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.android.apksig.internal.apk.ContentDigestAlgorithm;
 import com.android.apksig.internal.zip.ZipUtils;
 import com.android.apksig.util.DataSink;
 import com.android.apksig.util.DataSource;
@@ -71,15 +72,18 @@ public class VerityTreeBuilder implements AutoCloseable {
 
     private final MessageDigest mMd;
 
+    private final String mDigestAlgorithm;
+
     private final ExecutorService mExecutor =
             new ThreadPoolExecutor(DIGEST_PARALLELISM, DIGEST_PARALLELISM,
                     0L, MILLISECONDS,
                     new ArrayBlockingQueue<>(MAX_OUTSTANDING_CHUNKS),
                     new ThreadPoolExecutor.CallerRunsPolicy());
 
-    public VerityTreeBuilder(byte[] salt) throws NoSuchAlgorithmException {
+    public VerityTreeBuilder(byte[] salt, String digestAlgorithm) throws NoSuchAlgorithmException {
         mSalt = salt;
-        mMd = getNewMessageDigest();
+        mDigestAlgorithm = digestAlgorithm;
+        mMd = getNewMessageDigest(digestAlgorithm);
     }
 
     @Override
@@ -297,8 +301,8 @@ public class VerityTreeBuilder implements AutoCloseable {
     /**
      * Obtains a new instance of the message digest algorithm.
      */
-    private static MessageDigest getNewMessageDigest() throws NoSuchAlgorithmException {
-        return MessageDigest.getInstance(JCA_ALGORITHM);
+    private static MessageDigest getNewMessageDigest(String digestAlgorithm) throws NoSuchAlgorithmException {
+        return MessageDigest.getInstance(digestAlgorithm != null ? digestAlgorithm : JCA_ALGORITHM);
     }
 
     /**
@@ -309,7 +313,7 @@ public class VerityTreeBuilder implements AutoCloseable {
             return (MessageDigest) mMd.clone();
         } catch (CloneNotSupportedException ignored) {
             try {
-                return getNewMessageDigest();
+                return getNewMessageDigest(mDigestAlgorithm);
             } catch (NoSuchAlgorithmException e) {
                 throw new IllegalStateException(
                         "Failed to obtain an instance of a previously available message digest", e);

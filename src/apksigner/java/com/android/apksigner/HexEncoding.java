@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 /**
  * Hexadecimal encoding where each byte is represented by two hexadecimal digits.
  */
-class HexEncoding {
+public class HexEncoding {
 
     /** Hidden constructor to prevent instantiation. */
     private HexEncoding() {}
@@ -54,4 +54,5 @@ class HexEncoding {
     public static String encodeRemaining(ByteBuffer data) {
         return encode(data.array(), data.arrayOffset() + data.position(), data.remaining());
     }
+
 }
