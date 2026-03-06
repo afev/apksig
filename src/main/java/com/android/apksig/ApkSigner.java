@@ -99,6 +99,7 @@ public class ApkSigner {
     private final boolean mRotationTargetsDevRelease;
     private final boolean mV1SigningEnabled;
     private final boolean mV2SigningEnabled;
+    private final boolean mGostSigningEnabled;
     private final boolean mV3SigningEnabled;
     private final boolean mV4SigningEnabled;
     private final boolean mAlignFileSize;
@@ -134,6 +135,7 @@ public class ApkSigner {
             boolean rotationTargetsDevRelease,
             boolean v1SigningEnabled,
             boolean v2SigningEnabled,
+            boolean gostSigningEnabled,
             boolean v3SigningEnabled,
             boolean v4SigningEnabled,
             boolean alignFileSize,
@@ -163,6 +165,7 @@ public class ApkSigner {
         mRotationTargetsDevRelease = rotationTargetsDevRelease;
         mV1SigningEnabled = v1SigningEnabled;
         mV2SigningEnabled = v2SigningEnabled;
+        mGostSigningEnabled = gostSigningEnabled;
         mV3SigningEnabled = v3SigningEnabled;
         mV4SigningEnabled = v4SigningEnabled;
         mAlignFileSize = alignFileSize;
@@ -322,6 +325,7 @@ public class ApkSigner {
                     new DefaultApkSignerEngine.Builder(engineSignerConfigs, minSdkVersion)
                             .setV1SigningEnabled(mV1SigningEnabled)
                             .setV2SigningEnabled(mV2SigningEnabled)
+                            .setGostSigningEnabled(mGostSigningEnabled)
                             .setV3SigningEnabled(mV3SigningEnabled)
                             .setVerityEnabled(mVerityEnabled)
                             .setDebuggableApkPermitted(mDebuggableApkPermitted)
@@ -1269,6 +1273,7 @@ public class ApkSigner {
         private boolean mSourceStampTimestampEnabled = true;
         private boolean mV1SigningEnabled = true;
         private boolean mV2SigningEnabled = true;
+        private boolean mGostSigningEnabled = false;
         private boolean mV3SigningEnabled = true;
         private boolean mV4SigningEnabled = true;
         private boolean mAlignFileSize = false;
@@ -1600,6 +1605,26 @@ public class ApkSigner {
         }
 
         /**
+         * Sets whether the APK should be signed using APK Gost Signature Scheme (aka v2 signature
+         * scheme).
+         *
+         * <p><em>Note:</em> This method may only be invoked when this builder is not initialized
+         * with an {@link ApkSignerEngine}.
+         *
+         * @param enabled {@code true} to require the APK to be signed using APK Gost Signature Scheme,
+         *     {@code false} to require the APK to not be signed using APK Gost Signature Scheme.
+         * @throws IllegalStateException if this builder was initialized with an {@link
+         *     ApkSignerEngine}
+         * @see <a href="https://source.android.com/security/apksigning/v2.html">APK Signature
+         *     Scheme v2</a>
+         */
+        public Builder setGostSigningEnabled(boolean enabled) {
+            checkInitializedWithoutEngine();
+            mGostSigningEnabled = enabled;
+            return this;
+        }
+
+        /**
          * Sets whether the APK should be signed using APK Signature Scheme v3 (aka v3 signature
          * scheme).
          *
@@ -1828,6 +1853,7 @@ public class ApkSigner {
                     mRotationTargetsDevRelease,
                     mV1SigningEnabled,
                     mV2SigningEnabled,
+                    mGostSigningEnabled,
                     mV3SigningEnabled,
                     mV4SigningEnabled,
                     mAlignFileSize,

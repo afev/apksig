@@ -36,6 +36,7 @@ import com.android.apksig.internal.apk.v1.V1SchemeConstants;
 import com.android.apksig.internal.apk.v1.V1SchemeSigner;
 import com.android.apksig.internal.apk.v1.V1SchemeVerifier;
 import com.android.apksig.internal.apk.v2.V2SchemeSigner;
+import com.android.apksig.internal.apk.gost.GostSchemeSigner;
 import com.android.apksig.internal.apk.v3.V3SchemeConstants;
 import com.android.apksig.internal.apk.v3.V3SchemeSigner;
 import com.android.apksig.internal.apk.v4.V4SchemeSigner;
@@ -98,6 +99,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
 
     private final boolean mV1SigningEnabled;
     private final boolean mV2SigningEnabled;
+    private final boolean mGostSigningEnabled;
     private final boolean mV3SigningEnabled;
     private final boolean mVerityEnabled;
     private final boolean mDebuggableApkPermitted;
@@ -194,6 +196,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             int minSdkVersion,
             boolean v1SigningEnabled,
             boolean v2SigningEnabled,
+            boolean gostSigningEnabled,
             boolean v3SigningEnabled,
             boolean verityEnabled,
             boolean debuggableApkPermitted,
@@ -207,6 +210,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
 
         mV1SigningEnabled = v1SigningEnabled;
         mV2SigningEnabled = v2SigningEnabled;
+        mGostSigningEnabled = gostSigningEnabled;
         mV3SigningEnabled = v3SigningEnabled;
         mVerityEnabled = verityEnabled;
         mV1SignaturePending = v1SigningEnabled;
@@ -338,6 +342,13 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                     apkSigningBlockPaddingSupported,
                     ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2);
         }
+    }
+
+    private List<ApkSigningBlockUtils.SignerConfig> createGostSignerConfigs(
+            boolean apkSigningBlockPaddingSupported) throws InvalidKeyException {
+        return createSigningBlockSignerConfigs(
+                    apkSigningBlockPaddingSupported,
+                    ApkSigningBlockUtils.VERSION_APK_GOST_SIGNATURE_SCHEME);
     }
 
     private List<ApkSigningBlockUtils.SignerConfig> processV3Configs(
@@ -544,6 +555,12 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                                 mMinSdkVersion,
                                 apkSigningBlockPaddingSupported && mVerityEnabled,
                                 signerConfig.getDeterministicDsaSigning());
+                break;
+            case ApkSigningBlockUtils.VERSION_APK_GOST_SIGNATURE_SCHEME:
+                newSignerConfig.signatureAlgorithms =
+                        GostSchemeSigner.getSuggestedSignatureAlgorithms(
+                                publicKey,
+                                mMinSdkVersion);
                 break;
             case ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V3:
                 try {
@@ -1048,6 +1065,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
 
         List<Pair<byte[], Integer>> signingSchemeBlocks = new ArrayList<>();
         ApkSigningBlockUtils.SigningSchemeBlockAndDigests v2SigningSchemeBlockAndDigests = null;
+        ApkSigningBlockUtils.SigningSchemeBlockAndDigests signingSchemeBlockAndDigests = null;
         ApkSigningBlockUtils.SigningSchemeBlockAndDigests v3SigningSchemeBlockAndDigests = null;
         // If the engine is configured to preserve previous signature blocks and any were found in
         // the existing APK signing block then add them to the list to be used to generate the
@@ -1070,8 +1088,22 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                             eocd,
                             v2SignerConfigs,
                             mV3SigningEnabled,
-                            mOtherSignersSignaturesPreserved ? mPreservedV2Signers : null);
+                            mOtherSignersSignaturesPreserved ? mPreservedV2Signers : null,
+                            mGostSigningEnabled); // copy previous signatures only
             signingSchemeBlocks.add(v2SigningSchemeBlockAndDigests.signingSchemeBlock);
+        }
+        if (mGostSigningEnabled) {
+            List<ApkSigningBlockUtils.SignerConfig> signerConfigs =
+                    createGostSignerConfigs(apkSigningBlockPaddingSupported);
+            signingSchemeBlockAndDigests =
+                    GostSchemeSigner.generateApkSignatureSchemeBlock(
+                            mExecutor,
+                            beforeCentralDir,
+                            zipCentralDirectory,
+                            eocd,
+                            signerConfigs);
+            signingSchemeBlocks.add(signingSchemeBlockAndDigests.signingSchemeBlock);
+            // signingSchemeBlockAndDigests.digestInfo is null
         }
         if (mV3SigningEnabled) {
             invalidateV3Signature();
@@ -1894,6 +1926,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
 
         private boolean mV1SigningEnabled = true;
         private boolean mV2SigningEnabled = true;
+        private boolean mGostSigningEnabled = false;
         private boolean mV3SigningEnabled = true;
         private int mRotationMinSdkVersion = V3SchemeConstants.DEFAULT_ROTATION_MIN_SDK_VERSION;
         private boolean mRotationTargetsDevRelease = false;
@@ -2124,6 +2157,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                     mMinSdkVersion,
                     mV1SigningEnabled,
                     mV2SigningEnabled,
+                    mGostSigningEnabled,
                     mV3SigningEnabled,
                     mVerityEnabled,
                     mDebuggableApkPermitted,
@@ -2175,6 +2209,17 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
          */
         public Builder setV2SigningEnabled(boolean enabled) {
             mV2SigningEnabled = enabled;
+            return this;
+        }
+
+        /**
+         * Sets whether the APK should be signed using APK Gost Signature Scheme (aka v2 signature
+         * scheme).
+         *
+         * <p>By default, the APK will not be signed using this scheme.
+         */
+        public Builder setGostSigningEnabled(boolean enabled) {
+            mGostSigningEnabled = enabled;
             return this;
         }
 

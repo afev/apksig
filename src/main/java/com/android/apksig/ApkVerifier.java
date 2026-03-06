@@ -21,6 +21,7 @@ import static com.android.apksig.apk.ApkUtils.computeSha256DigestBytes;
 import static com.android.apksig.apk.ApkUtils.getTargetSandboxVersionFromBinaryAndroidManifest;
 import static com.android.apksig.apk.ApkUtils.getTargetSdkVersionFromBinaryAndroidManifest;
 import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2;
+import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_GOST_SIGNATURE_SCHEME;
 import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V3;
 import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V31;
 import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V4;
@@ -48,6 +49,8 @@ import com.android.apksig.internal.apk.stamp.V2SourceStampVerifier;
 import com.android.apksig.internal.apk.v1.V1SchemeVerifier;
 import com.android.apksig.internal.apk.v2.V2SchemeConstants;
 import com.android.apksig.internal.apk.v2.V2SchemeVerifier;
+import com.android.apksig.internal.apk.gost.GostSchemeConstants;
+import com.android.apksig.internal.apk.gost.GostSchemeVerifier;
 import com.android.apksig.internal.apk.v3.V3SchemeConstants;
 import com.android.apksig.internal.apk.v3.V3SchemeVerifier;
 import com.android.apksig.internal.apk.v4.V4SchemeVerifier;
@@ -105,6 +108,8 @@ public class ApkVerifier {
                 ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2, "APK Signature Scheme v2");
         supportedMap.put(
                 ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V3, "APK Signature Scheme v3");
+        supportedMap.put(
+                VERSION_APK_GOST_SIGNATURE_SCHEME, "APK GOST Signature Scheme");
         return supportedMap;
     }
 
@@ -302,6 +307,29 @@ public class ApkVerifier {
                 if (result.containsErrors()) {
                     return result;
                 }
+            }
+
+            // validate gost signature with type v2
+            try {
+                ApkSigningBlockUtils.Result gostResult =
+                        GostSchemeVerifier.verify(
+                                executor,
+                                apk,
+                                zipSections,
+                                supportedSchemeNames,
+                                foundApkSigSchemeIds,
+                                Math.max(minSdkVersion, AndroidSdkVersion.N),
+                                maxSdkVersion);
+                foundApkSigSchemeIds.add(VERSION_APK_GOST_SIGNATURE_SCHEME);
+                result.mergeFrom(gostResult);
+                signatureSchemeApkContentDigests.put(
+                        VERSION_APK_GOST_SIGNATURE_SCHEME,
+                        getApkContentDigestsFromSigningSchemeResult(gostResult));
+            } catch (ApkSigningBlockUtils.SignatureNotFoundException ignored) {
+                // gost signature not required
+            }
+            if (result.containsErrors()) {
+                return result;
             }
 
             // If v4 file is specified, use additional verification on it
@@ -590,8 +618,12 @@ public class ApkVerifier {
                         if (result.isVerifiedUsingV2Scheme()) {
                             break;
                         }
-                        // Allow this case to fall through to the next as a signature satisfying a
-                        // later scheme version will also satisfy this requirement.
+                    case VERSION_APK_GOST_SIGNATURE_SCHEME:
+                        if (result.isVerifiedUsingGostScheme()) {
+                            break;
+                        }
+                    // Allow this case to fall through to the next as a signature satisfying a
+                    // later scheme version will also satisfy this requirement.
                     case VERSION_APK_SIGNATURE_SCHEME_V3:
                         if (result.isVerifiedUsingV3Scheme() || result.isVerifiedUsingV31Scheme()) {
                             break;
@@ -618,6 +650,11 @@ public class ApkVerifier {
         } else if (result.isVerifiedUsingV2Scheme()) {
             for (Result.V2SchemeSignerInfo signerInfo : result.getV2SchemeSigners()) {
                 result.addSignerCertificate(signerInfo.getCertificate());
+            }
+            if (result.isVerifiedUsingGostScheme()) {
+                for (Result.GostSchemeSignerInfo signerInfo : result.getGostSchemeSigners()) {
+                    result.addSignerCertificate(signerInfo.getCertificate());
+                }
             }
         } else if (result.isVerifiedUsingV1Scheme()) {
             for (Result.V1SchemeSignerInfo signerInfo : result.getV1SchemeSigners()) {
@@ -678,6 +715,9 @@ public class ApkVerifier {
             supportedSchemeNames.put(ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2,
                     SUPPORTED_APK_SIG_SCHEME_NAMES.get(
                             ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2));
+            supportedSchemeNames.put(VERSION_APK_GOST_SIGNATURE_SCHEME,
+                    SUPPORTED_APK_SIG_SCHEME_NAMES.get(
+                            VERSION_APK_GOST_SIGNATURE_SCHEME));
         } else {
             supportedSchemeNames = Collections.emptyMap();
         }
@@ -956,6 +996,7 @@ public class ApkVerifier {
         Result result, int schemeId) {
         Map<ContentDigestAlgorithm, byte[]>  apkContentDigests = new HashMap<>();
         if (!(schemeId == VERSION_APK_SIGNATURE_SCHEME_V2
+                || schemeId == VERSION_APK_GOST_SIGNATURE_SCHEME
                 || schemeId == VERSION_APK_SIGNATURE_SCHEME_V3
                 || schemeId == VERSION_APK_SIGNATURE_SCHEME_V31)) {
             return apkContentDigests;
@@ -966,12 +1007,17 @@ public class ApkVerifier {
                     getContentDigests(signerInfo.getContentDigests(), apkContentDigests);
                 }
                 break;
+            case VERSION_APK_GOST_SIGNATURE_SCHEME:
+                for (V2SchemeSignerInfo signerInfo : result.getGostSchemeSigners()) {
+                    getContentDigests(signerInfo.getContentDigests(), apkContentDigests);
+                }
+                break;
             case VERSION_APK_SIGNATURE_SCHEME_V3:
                 for (Result.V3SchemeSignerInfo signerInfo : result.getV3SchemeSigners()) {
                     getContentDigests(signerInfo.getContentDigests(), apkContentDigests);
                 }
                 break;
-            case  VERSION_APK_SIGNATURE_SCHEME_V31:
+            case VERSION_APK_SIGNATURE_SCHEME_V31:
                 for (Result.V3SchemeSignerInfo signerInfo : result.getV31SchemeSigners()) {
                     getContentDigests(signerInfo.getContentDigests(), apkContentDigests);
                 }
@@ -1089,6 +1135,7 @@ public class ApkVerifier {
             int apkSigSchemeVersion, int minSdkVersion, int maxSdkVersion)
             throws IOException, NoSuchAlgorithmException {
         if (!(apkSigSchemeVersion == VERSION_APK_SIGNATURE_SCHEME_V2
+                || apkSigSchemeVersion == VERSION_APK_GOST_SIGNATURE_SCHEME
                 || apkSigSchemeVersion == VERSION_APK_SIGNATURE_SCHEME_V3
                 || apkSigSchemeVersion == VERSION_APK_SIGNATURE_SCHEME_V31)) {
             return null;
@@ -1103,6 +1150,9 @@ public class ApkVerifier {
                     break;
                 case VERSION_APK_SIGNATURE_SCHEME_V3:
                     sigSchemeBlockId = V3SchemeConstants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID;
+                    break;
+                case VERSION_APK_GOST_SIGNATURE_SCHEME:
+                    sigSchemeBlockId = GostSchemeConstants.APK_SIGNATURE_GOST_SCHEME_BLOCK_ID;
                     break;
                 default:
                     sigSchemeBlockId =
@@ -1120,7 +1170,13 @@ public class ApkVerifier {
             V2SchemeVerifier.parseSigners(signatureInfo.signatureBlock,
                     contentDigestsToVerify, supportedSchemeNames,
                     foundApkSigSchemeIds, minSdkVersion, maxSdkVersion, result);
-        } else {
+        }
+        else if (apkSigSchemeVersion == VERSION_APK_GOST_SIGNATURE_SCHEME) {
+            GostSchemeVerifier.parseSigners(signatureInfo.signatureBlock,
+                    contentDigestsToVerify, supportedSchemeNames,
+                    foundApkSigSchemeIds, minSdkVersion, maxSdkVersion, result);
+        }
+        else {
             V3SchemeVerifier.parseSigners(signatureInfo.signatureBlock,
                     contentDigestsToVerify, result);
         }
@@ -1268,6 +1324,7 @@ public class ApkVerifier {
         private final List<V1SchemeSignerInfo> mV1SchemeSigners = new ArrayList<>();
         private final List<V1SchemeSignerInfo> mV1SchemeIgnoredSigners = new ArrayList<>();
         private final List<V2SchemeSignerInfo> mV2SchemeSigners = new ArrayList<>();
+        private final List<GostSchemeSignerInfo> mGostSchemeSigners = new ArrayList<>();
         private final List<V3SchemeSignerInfo> mV3SchemeSigners = new ArrayList<>();
         private final List<V3SchemeSignerInfo> mV31SchemeSigners = new ArrayList<>();
         private final List<V4SchemeSignerInfo> mV4SchemeSigners = new ArrayList<>();
@@ -1276,6 +1333,7 @@ public class ApkVerifier {
         private boolean mVerified;
         private boolean mVerifiedUsingV1Scheme;
         private boolean mVerifiedUsingV2Scheme;
+        private boolean mVerifiedUsingGostScheme;
         private boolean mVerifiedUsingV3Scheme;
         private boolean mVerifiedUsingV31Scheme;
         private boolean mVerifiedUsingV4Scheme;
@@ -1306,6 +1364,13 @@ public class ApkVerifier {
          */
         public boolean isVerifiedUsingV2Scheme() {
             return mVerifiedUsingV2Scheme;
+        }
+
+        /**
+         * Returns {@code true} if the APK's APK Gost Signature Scheme signatures verified.
+         */
+        public boolean isVerifiedUsingGostScheme() {
+            return mVerifiedUsingGostScheme;
         }
 
         /**
@@ -1374,6 +1439,14 @@ public class ApkVerifier {
          */
         public List<V2SchemeSignerInfo> getV2SchemeSigners() {
             return mV2SchemeSigners;
+        }
+
+        /**
+         * Returns information about APK Gost Signature Scheme signers associated with the APK's
+         * signature.
+         */
+        public List<GostSchemeSignerInfo> getGostSchemeSigners() {
+            return mGostSchemeSigners;
         }
 
         /**
@@ -1503,6 +1576,12 @@ public class ApkVerifier {
                         mV2SchemeSigners.add(new V2SchemeSignerInfo(signer));
                     }
                     break;
+                case VERSION_APK_GOST_SIGNATURE_SCHEME:
+                    mVerifiedUsingGostScheme = source.verified;
+                    for (ApkSigningBlockUtils.Result.SignerInfo signer : source.signers) {
+                        mGostSchemeSigners.add(new GostSchemeSignerInfo(signer));
+                    }
+                    break;
                 case VERSION_APK_SIGNATURE_SCHEME_V3:
                     mVerifiedUsingV3Scheme = source.verified;
                     for (ApkSigningBlockUtils.Result.SignerInfo signer : source.signers) {
@@ -1568,6 +1647,16 @@ public class ApkVerifier {
                     }
                 }
             }
+            if (!mGostSchemeSigners.isEmpty()) {
+                for (GostSchemeSignerInfo signer : mGostSchemeSigners) {
+                    if (signer.containsErrors()) {
+                        return true;
+                    }
+                    if (mWarningsAsErrors && !signer.getWarnings().isEmpty()) {
+                        return true;
+                    }
+                }
+            }
             if (!mV3SchemeSigners.isEmpty()) {
                 for (V3SchemeSignerInfo signer : mV3SchemeSigners) {
                     if (signer.containsErrors()) {
@@ -1620,6 +1709,14 @@ public class ApkVerifier {
             }
             if (!mV2SchemeSigners.isEmpty()) {
                 for (V2SchemeSignerInfo signer : mV2SchemeSigners) {
+                    errors.addAll(signer.mErrors);
+                    if (mWarningsAsErrors) {
+                        errors.addAll(signer.getWarnings());
+                    }
+                }
+            }
+            if (!mGostSchemeSigners.isEmpty()) {
+                for (GostSchemeSignerInfo signer : mGostSchemeSigners) {
                     errors.addAll(signer.mErrors);
                     if (mWarningsAsErrors) {
                         errors.addAll(signer.getWarnings());
@@ -1750,8 +1847,8 @@ public class ApkVerifier {
             private final int mIndex;
             private final List<X509Certificate> mCerts;
 
-            private final List<IssueWithParams> mErrors;
-            private final List<IssueWithParams> mWarnings;
+            protected final List<IssueWithParams> mErrors;
+            protected final List<IssueWithParams> mWarnings;
             private final List<ApkSigningBlockUtils.Result.SignerInfo.ContentDigest>
                     mContentDigests;
 
@@ -1809,6 +1906,12 @@ public class ApkVerifier {
 
             public List<ApkSigningBlockUtils.Result.SignerInfo.ContentDigest> getContentDigests() {
                 return mContentDigests;
+            }
+        }
+
+        public static class GostSchemeSignerInfo extends V2SchemeSignerInfo {
+            private GostSchemeSignerInfo(ApkSigningBlockUtils.Result.SignerInfo result) {
+                super(result);
             }
         }
 

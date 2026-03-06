@@ -109,6 +109,7 @@ public class ApkSigningBlockUtils {
     public static final int VERSION_APK_SIGNATURE_SCHEME_V3 = 3;
     public static final int VERSION_APK_SIGNATURE_SCHEME_V31 = 31;
     public static final int VERSION_APK_SIGNATURE_SCHEME_V4 = 4;
+    public static final int VERSION_APK_GOST_SIGNATURE_SCHEME = 256; // like VERSION_APK_SIGNATURE_SCHEME_V2
 
     /**
      * Returns positive number if {@code alg1} is preferred over {@code alg2}, {@code -1} if
@@ -213,6 +214,12 @@ public class ApkSigningBlockUtils {
                 byte[] actualDigest = actualContentDigests.get(contentDigestAlgorithm);
                 if (!Arrays.equals(expectedDigest, actualDigest)) {
                     if (result.signatureSchemeVersion == VERSION_APK_SIGNATURE_SCHEME_V2) {
+                        signerInfo.addError(
+                                ApkVerifier.Issue.V2_SIG_APK_DIGEST_DID_NOT_VERIFY,
+                                contentDigestAlgorithm,
+                                toHex(expectedDigest),
+                                toHex(actualDigest));
+                    } else if (result.signatureSchemeVersion == VERSION_APK_GOST_SIGNATURE_SCHEME) {
                         signerInfo.addError(
                                 ApkVerifier.Issue.V2_SIG_APK_DIGEST_DID_NOT_VERIFY,
                                 contentDigestAlgorithm,

@@ -145,6 +145,7 @@ public class ApkSignerTool {
         boolean verbose = false;
         boolean v1SigningEnabled = true;
         boolean v2SigningEnabled = true;
+        boolean gostSigningEnabled = false;
         boolean v3SigningEnabled = true;
         boolean v4SigningEnabled = true;
         boolean forceSourceStampOverwrite = false;
@@ -197,6 +198,8 @@ public class ApkSignerTool {
                 v1SigningEnabled = optionsParser.getOptionalBooleanValue(true);
             } else if ("v2-signing-enabled".equals(optionName)) {
                 v2SigningEnabled = optionsParser.getOptionalBooleanValue(true);
+            } else if ("gost-signing-enabled".equals(optionName)) {
+                gostSigningEnabled = optionsParser.getOptionalBooleanValue(true);
             } else if ("v3-signing-enabled".equals(optionName)) {
                 v3SigningEnabled = optionsParser.getOptionalBooleanValue(true);
             } else if ("v4-signing-enabled".equals(optionName)) {
@@ -315,6 +318,25 @@ public class ApkSignerTool {
                                 + " options.");
             }
         }
+
+        if (gostSigningEnabled) {
+            if (v1SigningEnabled) {
+                throw new ParameterException("gost-signing-enabled=true should be used with v1-signing-enabled=false.");
+            }
+            if (v3SigningEnabled) {
+                throw new ParameterException("gost-signing-enabled=true should be used with v3-signing-enabled=false.");
+            }
+            if (v4SigningEnabled) {
+                throw new ParameterException("gost-signing-enabled=true should be used with v4-signing-enabled=false.");
+            }
+            if (!otherSignersSignaturesPreserved) {
+                throw new ParameterException("gost-signing-enabled=true should be used with append-signature=true.");
+            }
+            v1SigningEnabled = false;
+            v3SigningEnabled = false;
+            v4SigningEnabled = false;
+        }
+
         if (!signerParams.isEmpty()) {
             signers.add(signerParams);
         }
@@ -400,6 +422,7 @@ public class ApkSignerTool {
                         .setOtherSignersSignaturesPreserved(otherSignersSignaturesPreserved)
                         .setV1SigningEnabled(v1SigningEnabled)
                         .setV2SigningEnabled(v2SigningEnabled)
+                        .setGostSigningEnabled(gostSigningEnabled)
                         .setV3SigningEnabled(v3SigningEnabled)
                         .setV4SigningEnabled(v4SigningEnabled)
                         .setForceSourceStampOverwrite(forceSourceStampOverwrite)
@@ -654,6 +677,9 @@ public class ApkSignerTool {
                         "Verified using v2 scheme (APK Signature Scheme v2): "
                                 + result.isVerifiedUsingV2Scheme());
                 System.out.println(
+                        "Verified using GOST scheme (APK Signature Scheme v2): "
+                                + result.isVerifiedUsingGostScheme());
+                System.out.println(
                         "Verified using v3 scheme (APK Signature Scheme v3): "
                                 + result.isVerifiedUsingV3Scheme());
                 System.out.println(
@@ -739,6 +765,18 @@ public class ApkSignerTool {
                 warningsEncountered = true;
                 warningsOut.println(
                         "WARNING: APK Signature Scheme v2 " + signerName + ": " + warning);
+            }
+        }
+        for (ApkVerifier.Result.GostSchemeSignerInfo signer : result.getGostSchemeSigners()) {
+            String signerName = "signer #" + (signer.getIndex() + 1);
+            for (ApkVerifier.IssueWithParams error : signer.getErrors()) {
+                System.err.println(
+                        "ERROR: APK GOST Signature Scheme " + signerName + ": " + error);
+            }
+            for (ApkVerifier.IssueWithParams warning : signer.getWarnings()) {
+                warningsEncountered = true;
+                warningsOut.println(
+                        "WARNING: APK GOST Signature Scheme " + signerName + ": " + warning);
             }
         }
         for (ApkVerifier.Result.V3SchemeSignerInfo signer : result.getV3SchemeSigners()) {

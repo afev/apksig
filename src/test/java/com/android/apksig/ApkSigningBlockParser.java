@@ -98,11 +98,12 @@ public class ApkSigningBlockParser {
             while (block.remaining() > 24) {
                 long len = block.getLong();
                 int id = block.getInt();
+                System.out.printf("Detected %n=== Signature Scheme: 0x%08x ===%n", id);
 
                 byte[] value = new byte[(int) (len - 4)];
                 block.get(value);
 
-                if (id == 0x7109871a || id == 0xf05368c0) {
+                if (id == 0x7109871a || id == 0xf05368c0 || id == 0x2f02bfc7) {
                     System.out.printf("%n=== Signature Scheme: 0x%08x ===%n", id);
                     parseSignatureScheme(ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN));
                 }
@@ -309,6 +310,8 @@ public class ApkSigningBlockParser {
             throw new IllegalArgumentException(
                     String.format("Unknown signatureAlgorithmId: 0x%04x", signatureAlgorithmId));
         }
+
+        System.out.println("Signature: " + algoName);
 
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
         String keyAlg;

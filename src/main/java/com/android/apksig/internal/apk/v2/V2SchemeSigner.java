@@ -156,7 +156,7 @@ public abstract class V2SchemeSigner {
                 throws IOException, InvalidKeyException, NoSuchAlgorithmException,
                 SignatureException {
         return generateApkSignatureSchemeV2Block(executor, beforeCentralDir, centralDir, eocd,
-                signerConfigs, v3SigningEnabled, null);
+                signerConfigs, v3SigningEnabled, null, false);
     }
 
     public static ApkSigningBlockUtils.SigningSchemeBlockAndDigests
@@ -167,17 +167,34 @@ public abstract class V2SchemeSigner {
                     DataSource eocd,
                     List<SignerConfig> signerConfigs,
                     boolean v3SigningEnabled,
-                    List<byte[]> preservedV2SignerBlocks)
+                    List<byte[]> preservedV2SignerBlocks,
+                    boolean preserveOnly)
                     throws IOException, InvalidKeyException, NoSuchAlgorithmException,
                             SignatureException {
-        Pair<List<SignerConfig>, Map<ContentDigestAlgorithm, byte[]>> digestInfo =
-                ApkSigningBlockUtils.computeContentDigests(
-                        executor, beforeCentralDir, centralDir, eocd, signerConfigs);
-        return new ApkSigningBlockUtils.SigningSchemeBlockAndDigests(
-                generateApkSignatureSchemeV2Block(
-                        digestInfo.getFirst(), digestInfo.getSecond(), v3SigningEnabled,
-                        preservedV2SignerBlocks),
-                digestInfo.getSecond());
+        if (preserveOnly) {
+            List<byte[]> signerBlocks = new ArrayList<>(signerConfigs.size());
+            if (preservedV2SignerBlocks != null && preservedV2SignerBlocks.size() > 0) {
+                signerBlocks.addAll(preservedV2SignerBlocks);
+            }
+            return new ApkSigningBlockUtils.SigningSchemeBlockAndDigests(
+                    Pair.of(
+                            encodeAsSequenceOfLengthPrefixedElements(
+                                    new byte[][] {
+                                            encodeAsSequenceOfLengthPrefixedElements(signerBlocks),
+                                    }),
+                            V2SchemeConstants.APK_SIGNATURE_SCHEME_V2_BLOCK_ID),
+                    null); // do not use digest in this case
+        }
+        else {
+            Pair<List<SignerConfig>, Map<ContentDigestAlgorithm, byte[]>> digestInfo =
+                    ApkSigningBlockUtils.computeContentDigests(
+                            executor, beforeCentralDir, centralDir, eocd, signerConfigs);
+            return new ApkSigningBlockUtils.SigningSchemeBlockAndDigests(
+                    generateApkSignatureSchemeV2Block(
+                            digestInfo.getFirst(), digestInfo.getSecond(), v3SigningEnabled,
+                            preservedV2SignerBlocks),
+                    digestInfo.getSecond());
+        }
     }
 
     private static Pair<byte[], Integer> generateApkSignatureSchemeV2Block(
