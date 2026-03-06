@@ -663,79 +663,103 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             return;
         }
 
-        if (mOtherSignersSignaturesPreserved) {
-            boolean schemeSignatureBlockPreserved = false;
+        if (mGostSigningEnabled) {
+            // When GOST we copy all signature blocks as is.
+            if (!mOtherSignersSignaturesPreserved) {
+                throw new IllegalStateException("Preserving of all signatures is required.");
+            }
             mPreservedSignatureBlocks = new ArrayList<>();
             try {
                 List<Pair<byte[], Integer>> signatureBlocks =
                         ApkSigningBlockUtils.getApkSignatureBlocks(apkSigningBlock);
                 for (Pair<byte[], Integer> signatureBlock : signatureBlocks) {
-                    if (signatureBlock.getSecond() == Constants.APK_SIGNATURE_SCHEME_V2_BLOCK_ID) {
-                        // If a V2 signature block is found and the engine is configured to use V2
-                        // then save any of the previous signers that are not part of the current
-                        // signing request.
-                        if (mV2SigningEnabled) {
-                            List<Pair<List<X509Certificate>, byte[]>> v2Signers =
-                                    ApkSigningBlockUtils.getApkSignatureBlockSigners(
-                                            signatureBlock.getFirst());
-                            mPreservedV2Signers = new ArrayList<>(v2Signers.size());
-                            for (Pair<List<X509Certificate>, byte[]> v2Signer : v2Signers) {
-                                if (!isConfiguredWithSigner(v2Signer.getFirst())) {
-                                    mPreservedV2Signers.add(v2Signer.getSecond());
-                                    schemeSignatureBlockPreserved = true;
-                                }
-                            }
-                        } else {
-                            // else V2 signing is not enabled; save the entire signature block to be
-                            // added to the final APK signing block.
-                            mPreservedSignatureBlocks.add(signatureBlock);
-                            schemeSignatureBlockPreserved = true;
-                        }
-                    } else if (signatureBlock.getSecond()
-                            == Constants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID) {
-                        // Preserving other signers in the presence of a V3 signature block is only
-                        // supported if the engine is configured to resign the APK with the V3
-                        // signature scheme, and the V3 signer in the signature block is the same
-                        // as the engine is configured to use.
-                        if (!mV3SigningEnabled) {
-                            throw new IllegalStateException(
-                                    "Preserving an existing V3 signature is not supported");
-                        }
-                        List<Pair<List<X509Certificate>, byte[]>> v3Signers =
-                                ApkSigningBlockUtils.getApkSignatureBlockSigners(
-                                        signatureBlock.getFirst());
-                        if (v3Signers.size() > 1) {
-                            throw new IllegalArgumentException(
-                                    "The provided APK signing block contains " + v3Signers.size()
-                                            + " V3 signers; the V3 signature scheme only supports"
-                                            + " one signer");
-                        }
-                        // If there is only a single V3 signer then ensure it is the signer
-                        // configured to sign the APK.
-                        if (v3Signers.size() == 1
-                                && !isConfiguredWithSigner(v3Signers.get(0).getFirst())) {
-                            throw new IllegalStateException(
-                                    "The V3 signature scheme only supports one signer; a request "
-                                            + "was made to preserve the existing V3 signature, "
-                                            + "but the engine is configured to sign with a "
-                                            + "different signer");
-                        }
-                    } else if (!DISCARDED_SIGNATURE_BLOCK_IDS.contains(
-                            signatureBlock.getSecond())) {
+                    if (signatureBlock.getSecond() == Constants.APK_SIGNATURE_SCHEME_V2_BLOCK_ID
+                        || signatureBlock.getSecond() == Constants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID) {
+                        mPreservedSignatureBlocks.add(signatureBlock);
+                    }
+                    else if (!DISCARDED_SIGNATURE_BLOCK_IDS.contains(signatureBlock.getSecond())) {
                         mPreservedSignatureBlocks.add(signatureBlock);
                     }
                 }
-            } catch (ApkFormatException | CertificateException | IOException e) {
+            } catch (IOException e) {
                 throw new IllegalArgumentException("Unable to parse the provided signing block", e);
             }
-            // Signature scheme V3+ only support a single signer; if the engine is configured to
-            // sign with V3+ then ensure no scheme signature blocks have been preserved.
-            if (mV3SigningEnabled && schemeSignatureBlockPreserved) {
-                throw new IllegalStateException(
-                        "Signature scheme V3+ only supports a single signer and cannot be "
-                                + "appended to the existing signature scheme blocks");
+        }
+        else {
+            if (mOtherSignersSignaturesPreserved) {
+                boolean schemeSignatureBlockPreserved = false;
+                mPreservedSignatureBlocks = new ArrayList<>();
+                try {
+                    List<Pair<byte[], Integer>> signatureBlocks =
+                            ApkSigningBlockUtils.getApkSignatureBlocks(apkSigningBlock);
+                    for (Pair<byte[], Integer> signatureBlock : signatureBlocks) {
+                        if (signatureBlock.getSecond() == Constants.APK_SIGNATURE_SCHEME_V2_BLOCK_ID) {
+                            // If a V2 signature block is found and the engine is configured to use V2
+                            // then save any of the previous signers that are not part of the current
+                            // signing request.
+                            if (mV2SigningEnabled) {
+                                List<Pair<List<X509Certificate>, byte[]>> v2Signers =
+                                        ApkSigningBlockUtils.getApkSignatureBlockSigners(
+                                                signatureBlock.getFirst());
+                                mPreservedV2Signers = new ArrayList<>(v2Signers.size());
+                                for (Pair<List<X509Certificate>, byte[]> v2Signer : v2Signers) {
+                                    if (!isConfiguredWithSigner(v2Signer.getFirst())) {
+                                        mPreservedV2Signers.add(v2Signer.getSecond());
+                                        schemeSignatureBlockPreserved = true;
+                                    }
+                                }
+                            } else {
+                                // else V2 signing is not enabled; save the entire signature block to be
+                                // added to the final APK signing block.
+                                mPreservedSignatureBlocks.add(signatureBlock);
+                                schemeSignatureBlockPreserved = true;
+                            }
+                        } else if (signatureBlock.getSecond()
+                            == Constants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID) {
+                            // Preserving other signers in the presence of a V3 signature block is only
+                            // supported if the engine is configured to resign the APK with the V3
+                            // signature scheme, and the V3 signer in the signature block is the same
+                            // as the engine is configured to use.
+                            if (!mV3SigningEnabled) {
+                                throw new IllegalStateException(
+                                        "Preserving an existing V3 signature is not supported");
+                            }
+                            List<Pair<List<X509Certificate>, byte[]>> v3Signers =
+                                    ApkSigningBlockUtils.getApkSignatureBlockSigners(
+                                            signatureBlock.getFirst());
+                            if (v3Signers.size() > 1) {
+                                throw new IllegalArgumentException(
+                                        "The provided APK signing block contains " + v3Signers.size()
+                                                + " V3 signers; the V3 signature scheme only supports"
+                                                + " one signer");
+                            }
+                            // If there is only a single V3 signer then ensure it is the signer
+                            // configured to sign the APK.
+                            if (v3Signers.size() == 1
+                                    && !isConfiguredWithSigner(v3Signers.get(0).getFirst())) {
+                                throw new IllegalStateException(
+                                        "The V3 signature scheme only supports one signer; a request "
+                                                + "was made to preserve the existing V3 signature, "
+                                                + "but the engine is configured to sign with a "
+                                                + "different signer");
+                            }
+                        } else if (!DISCARDED_SIGNATURE_BLOCK_IDS.contains(
+                                signatureBlock.getSecond())) {
+                            mPreservedSignatureBlocks.add(signatureBlock);
+                        }
+                    }
+                } catch (ApkFormatException | CertificateException | IOException e) {
+                    throw new IllegalArgumentException("Unable to parse the provided signing block", e);
+                }
+                // Signature scheme V3+ only support a single signer; if the engine is configured to
+                // sign with V3+ then ensure no scheme signature blocks have been preserved.
+                if (mV3SigningEnabled && schemeSignatureBlockPreserved) {
+                    throw new IllegalStateException(
+                            "Signature scheme V3+ only supports a single signer and cannot be "
+                                    + "appended to the existing signature scheme blocks");
+                }
+                return;
             }
-            return;
         }
     }
 
@@ -1050,7 +1074,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
         checkNotClosed();
         checkV1SigningDoneIfEnabled();
-        if (!mV2SigningEnabled && !mV3SigningEnabled && !isEligibleForSourceStamp()) {
+        if (!mV2SigningEnabled && !mGostSigningEnabled && !mV3SigningEnabled && !isEligibleForSourceStamp()) {
             return null;
         }
         checkOutputApkNotDebuggableIfDebuggableMustBeRejected();
@@ -1088,8 +1112,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                             eocd,
                             v2SignerConfigs,
                             mV3SigningEnabled,
-                            mOtherSignersSignaturesPreserved ? mPreservedV2Signers : null,
-                            mGostSigningEnabled); // copy previous signatures only
+                            mOtherSignersSignaturesPreserved ? mPreservedV2Signers : null);
             signingSchemeBlocks.add(v2SigningSchemeBlockAndDigests.signingSchemeBlock);
         }
         if (mGostSigningEnabled) {

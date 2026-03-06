@@ -651,11 +651,6 @@ public class ApkVerifier {
             for (Result.V2SchemeSignerInfo signerInfo : result.getV2SchemeSigners()) {
                 result.addSignerCertificate(signerInfo.getCertificate());
             }
-            if (result.isVerifiedUsingGostScheme()) {
-                for (Result.GostSchemeSignerInfo signerInfo : result.getGostSchemeSigners()) {
-                    result.addSignerCertificate(signerInfo.getCertificate());
-                }
-            }
         } else if (result.isVerifiedUsingV1Scheme()) {
             for (Result.V1SchemeSignerInfo signerInfo : result.getV1SchemeSigners()) {
                 result.addSignerCertificate(signerInfo.getCertificate());
@@ -663,6 +658,12 @@ public class ApkVerifier {
         } else {
             throw new RuntimeException(
                     "APK verified, but has not verified using any of v1, v2 or v3 schemes");
+        }
+
+        if (result.isVerifiedUsingGostScheme()) {
+            for (Result.GostSchemeSignerInfo signerInfo : result.getGostSchemeSigners()) {
+                result.addSignerCertificate(signerInfo.getCertificate());
+            }
         }
 
         return result;
