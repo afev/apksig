@@ -30,11 +30,12 @@ certificate.
                       enabled based on min and max SDK version (see
                       --min-sdk-version and --max-sdk-version).
 
---gost-signing-enabled Whether to enable signing using APK Signature Scheme v2
-                      with custom ID. This method uses GOST signature algorithm.
-                      The option is allowed with --append-signature=true,
-                      --v1-signing-enabled=false, --v2-signing-enabled=true,
-                      --v3-signing-enabled=false, --v4-signing-enabled=false only.
+--gost-signing-enabled Whether to enable signing using APK GOST Signature Scheme
+                      with custom ID. This method uses GOST signature algorithm
+                      with block format APK Signature Scheme v2. The option is
+                      allowed with --append-signature, --v1-signing-enabled false,
+                      --v2-signing-enabled false, --v3-signing-enabled false,
+                      --v4-signing-enabled false only.
 
 --v3-signing-enabled  Whether to enable signing using APK Signature Scheme v3
                       (aka v3 signing scheme) introduced in Android P,
