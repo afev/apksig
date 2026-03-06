@@ -821,6 +821,19 @@ public class ApkSignerTool {
             }
         }
 
+        for (ApkVerifier.Result.V4SchemeSignerInfo signer : result.getV4SchemeSigners()) {
+            String signerName = "signer #" + (signer.getIndex() + 1);
+            for (ApkVerifier.IssueWithParams error : signer.getErrors()) {
+                System.err.println(
+                        "ERROR: APK Signature Scheme v4 " + signerName + ": " + error);
+            }
+            for (ApkVerifier.IssueWithParams warning : signer.getWarnings()) {
+                // warningsEncountered = true; // do not treat like severe error
+                warningsOut.println(
+                        "WARNING: APK Signature Scheme v4 " + signerName + ": " + warning);
+            }
+        }
+
         if (!verified) {
             System.exit(1);
             return;
