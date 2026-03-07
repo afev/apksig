@@ -327,6 +327,7 @@ public class ApkSigner {
                             .setV2SigningEnabled(mV2SigningEnabled)
                             .setGostSigningEnabled(mGostSigningEnabled)
                             .setV3SigningEnabled(mV3SigningEnabled)
+                            .setV4SigningEnabled(mV4SigningEnabled)
                             .setVerityEnabled(mVerityEnabled)
                             .setDebuggableApkPermitted(mDebuggableApkPermitted)
                             .setOtherSignersSignaturesPreserved(mOtherSignersSignaturesPreserved)
@@ -1834,9 +1835,11 @@ public class ApkSigner {
                 if (!mV4ErrorReportingEnabled) {
                     mV4SigningEnabled = false;
                 } else {
-                    throw new IllegalStateException(
-                            "APK Signature Scheme v4 signing requires at least "
-                                    + "v2 or v3 signing to be enabled");
+                    // Allow signing V4 only (without creating v3/v4 signature) by copying
+                    // all existing signing blocks.
+                    // throw new IllegalStateException(
+                    //         "APK Signature Scheme v4 signing requires at least "
+                    //                 + "v2 or v3 signing to be enabled");
                 }
             }
 

@@ -101,6 +101,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
     private final boolean mV2SigningEnabled;
     private final boolean mGostSigningEnabled;
     private final boolean mV3SigningEnabled;
+    private final boolean mV4SigningEnabled;
     private final boolean mVerityEnabled;
     private final boolean mDebuggableApkPermitted;
     private final boolean mOtherSignersSignaturesPreserved;
@@ -198,6 +199,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             boolean v2SigningEnabled,
             boolean gostSigningEnabled,
             boolean v3SigningEnabled,
+            boolean v4SigningEnabled,
             boolean verityEnabled,
             boolean debuggableApkPermitted,
             boolean otherSignersSignaturesPreserved,
@@ -212,6 +214,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
         mV2SigningEnabled = v2SigningEnabled;
         mGostSigningEnabled = gostSigningEnabled;
         mV3SigningEnabled = v3SigningEnabled;
+        mV4SigningEnabled = v4SigningEnabled;
         mVerityEnabled = verityEnabled;
         mV1SignaturePending = v1SigningEnabled;
         mV2SignaturePending = v2SigningEnabled;
@@ -655,6 +658,10 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
         mExecutor = executor;
     }
 
+    private boolean isV4Only() {
+        return mV4SigningEnabled && !mV3SigningEnabled && !mV2SigningEnabled && !mV1SigningEnabled && !mGostSigningEnabled;
+    }
+
     @Override
     public void inputApkSigningBlock(DataSource apkSigningBlock) {
         checkNotClosed();
@@ -663,9 +670,10 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             return;
         }
 
-        if (mGostSigningEnabled) {
-            // When GOST we copy all signature blocks as is.
-            if (!mOtherSignersSignaturesPreserved) {
+        // When GOST we copy all signature blocks as is to sign later.
+        // When V4 we also copy all as is to sign it later.
+        if (mGostSigningEnabled || isV4Only()) {
+            if (mGostSigningEnabled && !mOtherSignersSignaturesPreserved) {
                 throw new IllegalStateException("Preserving of all signatures is required.");
             }
             mPreservedSignatureBlocks = new ArrayList<>();
@@ -1074,7 +1082,8 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
         checkNotClosed();
         checkV1SigningDoneIfEnabled();
-        if (!mV2SigningEnabled && !mGostSigningEnabled && !mV3SigningEnabled && !isEligibleForSourceStamp()) {
+        // Allow single GOST and single V4 signature. In these cases copy signing blocks only.
+        if (!mV2SigningEnabled && !mGostSigningEnabled && !mV3SigningEnabled && !mV4SigningEnabled && !isEligibleForSourceStamp()) {
             return null;
         }
         checkOutputApkNotDebuggableIfDebuggableMustBeRejected();
@@ -1094,7 +1103,8 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
         // If the engine is configured to preserve previous signature blocks and any were found in
         // the existing APK signing block then add them to the list to be used to generate the
         // new APK signing block.
-        if (mOtherSignersSignaturesPreserved && mPreservedSignatureBlocks != null
+        // In case of v4 there are preserved signature blocks to be copied.
+        if ((mOtherSignersSignaturesPreserved || isV4Only()) && mPreservedSignatureBlocks != null
                 && !mPreservedSignatureBlocks.isEmpty()) {
             signingSchemeBlocks.addAll(mPreservedSignatureBlocks);
         }
@@ -1951,6 +1961,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
         private boolean mV2SigningEnabled = true;
         private boolean mGostSigningEnabled = false;
         private boolean mV3SigningEnabled = true;
+        private boolean mV4SigningEnabled = false;
         private int mRotationMinSdkVersion = V3SchemeConstants.DEFAULT_ROTATION_MIN_SDK_VERSION;
         private boolean mRotationTargetsDevRelease = false;
         private boolean mVerityEnabled = false;
@@ -2182,6 +2193,7 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                     mV2SigningEnabled,
                     mGostSigningEnabled,
                     mV3SigningEnabled,
+                    mV4SigningEnabled,
                     mVerityEnabled,
                     mDebuggableApkPermitted,
                     mOtherSignersSignaturesPreserved,
@@ -2259,6 +2271,16 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
             } else {
                 mV3SigningExplicitlyDisabled = true;
             }
+            return this;
+        }
+
+        /**
+         * Notify whether the APK should be signed using APK Signature Scheme v4.
+         *
+         * <p>By default, the APK will not be signed using this scheme.
+         */
+        public Builder setV4SigningEnabled(boolean enabled) {
+            mV4SigningEnabled = enabled;
             return this;
         }
 

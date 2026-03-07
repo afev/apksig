@@ -23,6 +23,8 @@ range of API Levels.
 --max-sdk-version     Highest API Level on which this APK's signatures will be
                       verified. By default, the highest possible value is used.
 
+--v4-signature-file   idsig file with v4 signature.
+
 -Werr                 Treat warnings as errors
 
 --in                  APK file to verify. This is an alternative to specifying

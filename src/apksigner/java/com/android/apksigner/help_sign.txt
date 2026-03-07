@@ -52,6 +52,10 @@ certificate.
                       API Level 30. By default, signing using this scheme is
                       enabled based on min and max SDK version (see
                       --min-sdk-version and --max-sdk-version).
+                      This option is allowed without --v2-signing-enabled false
+                      and --v3-signing-enabled false, but it does copy of source
+                      apk only (does not sign v2/v3) and signs it again replacing
+                      previous idsig file.
 
 --force-stamp-overwrite  Whether to overwrite existing source stamp in the
                       APK, if found. By default, it is set to false. It has no
