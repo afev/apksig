@@ -321,19 +321,19 @@ public class ApkSignerTool {
 
         if (gostSigningEnabled) {
             if (v1SigningEnabled) {
-                throw new ParameterException("gost-signing-enabled=true should be used with '--v1-signing-enabled false'");
+                throw new ParameterException("--gost-signing-enabled true should be used with '--v1-signing-enabled false'");
             }
             if (v2SigningEnabled) {
-                throw new ParameterException("gost-signing-enabled=true should be used with '--v2-signing-enabled false'");
+                throw new ParameterException("--gost-signing-enabled true should be used with '--v2-signing-enabled false'");
             }
             if (v3SigningEnabled) {
-                throw new ParameterException("gost-signing-enabled=true should be used with '--v3-signing-enabled false'");
+                throw new ParameterException("--gost-signing-enabled true should be used with '--v3-signing-enabled false'");
             }
             if (v4SigningEnabled) {
-                throw new ParameterException("gost-signing-enabled=true should be used with '--v4-signing-enabled false'");
+                throw new ParameterException("--gost-signing-enabled true should be used with '--v4-signing-enabled false'");
             }
             if (!otherSignersSignaturesPreserved) {
-                throw new ParameterException("gost-signing-enabled=true should be used with '--append-signature'");
+                throw new ParameterException("--gost-signing-enabled true should be used with '--append-signature'");
             }
             v1SigningEnabled = false;
             v3SigningEnabled = false;
