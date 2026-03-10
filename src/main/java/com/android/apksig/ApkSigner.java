@@ -392,10 +392,11 @@ public class ApkSigner {
                 } catch (ZipFormatException ex) {
                     throw new ApkFormatException("Bad source stamp entry");
                 }
-                // GOST uses full copy (as possible) of the source apk and does not suppose adding any new blocks except GOST.
-                // So all these blocks and additional data like zip comments of source stamp should be entirely copied.
-                // V4 does the same but does not add any new block, just copying with later external signing.
-                if (!mGostSigningEnabled && !isV4Only()) {
+                // Appending GOST signature uses full copy (as possible) of the source apk and does not suppose adding
+                // any new blocks except GOST. So all these blocks and additional data like zip comments of source stamp
+                // should be entirely copied. V4 does the same thing here but does not add any new block, just copying
+                // with later external signing.
+                if (!mSourceStampTimestampEnabled && !mGostSigningEnabled && !isV4Only()) { // consider source timestamp
                     continue; // Existing source stamp is handled below as needed.
                 }
             }
