@@ -1598,20 +1598,8 @@ public class ApkSignerTest {
         ApkSigner.SignerConfig signer =
                 getDefaultSignerConfigFromResources(FIRST_RSA_2048_SIGNER_RESOURCE_NAME);
 
-        // Allow signing V4 only (without creating v3/v4 signature) by copying all existing signing blocks.
-        // assertThrows(
-        //         IllegalStateException.class,
-        //         () ->
-        //                 sign(
-        //                         "original.apk",
-        //                         new ApkSigner.Builder(Collections.singletonList(signer))
-        //                                 .setV1SigningEnabled(true)
-        //                                 .setV2SigningEnabled(false)
-        //                                 .setV3SigningEnabled(false)
-        //                                 .setV4SigningEnabled(true)));
-
         assertThrows(
-                SignatureException.class,
+                IllegalStateException.class,
                 () ->
                         sign(
                                 "original.apk",

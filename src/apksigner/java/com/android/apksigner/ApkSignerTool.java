@@ -148,6 +148,7 @@ public class ApkSignerTool {
         boolean gostSigningEnabled = false;
         boolean v3SigningEnabled = true;
         boolean v4SigningEnabled = true;
+        boolean v4SingleSigningEnabled = false;
         boolean forceSourceStampOverwrite = false;
         boolean sourceStampTimestampEnabled = true;
         boolean alignFileSize = false;
@@ -205,6 +206,8 @@ public class ApkSignerTool {
             } else if ("v4-signing-enabled".equals(optionName)) {
                 v4SigningEnabled = optionsParser.getOptionalBooleanValue(true);
                 v4SigningFlagFound = true;
+            } else if ("v4-single-signing-enabled".equals(optionName)) {
+                v4SingleSigningEnabled = optionsParser.getOptionalBooleanValue(true);
             } else if ("force-stamp-overwrite".equals(optionName)) {
                 forceSourceStampOverwrite = optionsParser.getOptionalBooleanValue(true);
             } else if ("stamp-timestamp-enabled".equals(optionName)) {
@@ -332,12 +335,42 @@ public class ApkSignerTool {
             if (v4SigningEnabled) {
                 throw new ParameterException("--gost-signing-enabled true should be used with '--v4-signing-enabled false'");
             }
+            if (v4SingleSigningEnabled) {
+                throw new ParameterException("--gost-signing-enabled true should be used with '--v4-single-signing-enabled false'");
+            }
+            if (sourceStampTimestampEnabled) {
+                throw new ParameterException("--gost-signing-enabled true should be used with '--stamp-timestamp-enabled false'");
+            }
             if (!otherSignersSignaturesPreserved) {
                 throw new ParameterException("--gost-signing-enabled true should be used with '--append-signature'");
             }
             v1SigningEnabled = false;
+            v2SigningEnabled = false;
             v3SigningEnabled = false;
             v4SigningEnabled = false;
+            v4SingleSigningEnabled = false;
+            sourceStampTimestampEnabled = false;
+        }
+        else if (v4SingleSigningEnabled) {
+            if (v1SigningEnabled) {
+                throw new ParameterException("--v4-single-signing-enabled true should be used with '--v1-signing-enabled false'");
+            }
+            if (v2SigningEnabled) {
+                throw new ParameterException("--v4-single-signing-enabled true should be used with '--v2-signing-enabled false'");
+            }
+            if (v3SigningEnabled) {
+                throw new ParameterException("--v4-single-signing-enabled true should be used with '--v3-signing-enabled false'");
+            }
+            if (!v4SigningEnabled) {
+                throw new ParameterException("--v4-single-signing-enabled true should be used with '--v4-signing-enabled true'");
+            }
+            if (sourceStampTimestampEnabled) {
+                throw new ParameterException("--v4-single-signing-enabled true should be used with '--stamp-timestamp-enabled false'");
+            }
+            v1SigningEnabled = false;
+            v2SigningEnabled = false;
+            v3SigningEnabled = false;
+            sourceStampTimestampEnabled = false;
         }
 
         if (!signerParams.isEmpty()) {
@@ -428,6 +461,7 @@ public class ApkSignerTool {
                         .setGostSigningEnabled(gostSigningEnabled)
                         .setV3SigningEnabled(v3SigningEnabled)
                         .setV4SigningEnabled(v4SigningEnabled)
+                        .setV4SingleSigningEnabled(v4SingleSigningEnabled)
                         .setForceSourceStampOverwrite(forceSourceStampOverwrite)
                         .setSourceStampTimestampEnabled(sourceStampTimestampEnabled)
                         .setAlignFileSize(alignFileSize)

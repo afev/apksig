@@ -102,6 +102,7 @@ public class ApkSigner {
     private final boolean mGostSigningEnabled;
     private final boolean mV3SigningEnabled;
     private final boolean mV4SigningEnabled;
+    private final boolean mV4SingleSigningEnabled;
     private final boolean mAlignFileSize;
     private final boolean mVerityEnabled;
     private final boolean mV4ErrorReportingEnabled;
@@ -138,6 +139,7 @@ public class ApkSigner {
             boolean gostSigningEnabled,
             boolean v3SigningEnabled,
             boolean v4SigningEnabled,
+            boolean v4SingleSigningEnabled,
             boolean alignFileSize,
             boolean verityEnabled,
             boolean v4ErrorReportingEnabled,
@@ -168,6 +170,7 @@ public class ApkSigner {
         mGostSigningEnabled = gostSigningEnabled;
         mV3SigningEnabled = v3SigningEnabled;
         mV4SigningEnabled = v4SigningEnabled;
+        mV4SingleSigningEnabled = v4SingleSigningEnabled;
         mAlignFileSize = alignFileSize;
         mVerityEnabled = verityEnabled;
         mV4ErrorReportingEnabled = v4ErrorReportingEnabled;
@@ -189,10 +192,6 @@ public class ApkSigner {
         mOutputV4File = outputV4File;
 
         mSigningCertificateLineage = signingCertificateLineage;
-    }
-
-    private boolean isV4Only() {
-        return mV4SigningEnabled && !mV3SigningEnabled && !mV2SigningEnabled && !mV1SigningEnabled && !mGostSigningEnabled;
     }
 
     /**
@@ -332,6 +331,7 @@ public class ApkSigner {
                             .setGostSigningEnabled(mGostSigningEnabled)
                             .setV3SigningEnabled(mV3SigningEnabled)
                             .setV4SigningEnabled(mV4SigningEnabled)
+                            .setV4SingleSigningEnabled(mV4SingleSigningEnabled)
                             .setVerityEnabled(mVerityEnabled)
                             .setDebuggableApkPermitted(mDebuggableApkPermitted)
                             .setOtherSignersSignaturesPreserved(mOtherSignersSignaturesPreserved)
@@ -396,7 +396,7 @@ public class ApkSigner {
                 // any new blocks except GOST. So all these blocks and additional data like zip comments of source stamp
                 // should be entirely copied. V4 does the same thing here but does not add any new block, just copying
                 // with later external signing.
-                if (mSourceStampTimestampEnabled && !mGostSigningEnabled && !isV4Only()) { // consider source timestamp
+                if (mSourceStampTimestampEnabled && !mGostSigningEnabled && !mV4SingleSigningEnabled) { // consider source timestamp
                     continue; // Existing source stamp is handled below as needed.
                 }
             }
@@ -1287,6 +1287,7 @@ public class ApkSigner {
         private boolean mGostSigningEnabled = false;
         private boolean mV3SigningEnabled = true;
         private boolean mV4SigningEnabled = true;
+        private boolean mV4SingleSigningEnabled = false;
         private boolean mAlignFileSize = false;
         private boolean mVerityEnabled = false;
         private boolean mV4ErrorReportingEnabled = false;
@@ -1681,6 +1682,17 @@ public class ApkSigner {
         }
 
         /**
+         * Sets whether the APK should be signed using APK Signature Scheme v4 separately without v2/v3.
+         *
+         * @param enabled {@code true} to require the APK to be signed using APK Signature Scheme v4 signature file
+         */
+        public Builder setV4SingleSigningEnabled(boolean enabled) {
+            checkInitializedWithoutEngine();
+            mV4SingleSigningEnabled = enabled;
+            return this;
+        }
+
+        /**
          * Sets whether errors during v4 signing should be reported and halt the signing process.
          *
          * <p>Error reporting for v4 signing is disabled by default, but will be enabled if the
@@ -1847,9 +1859,11 @@ public class ApkSigner {
                 } else {
                     // Allow signing V4 only (without creating v3/v4 signature) by copying
                     // all existing signing blocks.
-                    // throw new IllegalStateException(
-                    //         "APK Signature Scheme v4 signing requires at least "
-                    //                 + "v2 or v3 signing to be enabled");
+                    if (!mV4SingleSigningEnabled) {
+                        throw new IllegalStateException(
+                                "APK Signature Scheme v4 signing requires at least "
+                                        + "v2 or v3 signing to be enabled");
+                    }
                 }
             }
 
@@ -1869,6 +1883,7 @@ public class ApkSigner {
                     mGostSigningEnabled,
                     mV3SigningEnabled,
                     mV4SigningEnabled,
+                    mV4SingleSigningEnabled,
                     mAlignFileSize,
                     mVerityEnabled,
                     mV4ErrorReportingEnabled,
