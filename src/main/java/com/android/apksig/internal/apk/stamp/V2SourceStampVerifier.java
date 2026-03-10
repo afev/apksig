@@ -16,6 +16,7 @@
 
 package com.android.apksig.internal.apk.stamp;
 
+import static com.android.apksig.internal.apk.ApkSigningBlockUtils.VERSION_APK_GOST_SIGNATURE_SCHEME;
 import static com.android.apksig.internal.apk.ApkSigningBlockUtilsLite.encodeAsSequenceOfLengthPrefixedPairsOfIntAndLengthPrefixedBytes;
 import static com.android.apksig.internal.apk.stamp.SourceStampConstants.V2_SOURCE_STAMP_BLOCK_ID;
 
@@ -132,6 +133,10 @@ public abstract class V2SourceStampVerifier {
         Map<Integer, byte[]> digests = new HashMap<>();
         for (Map.Entry<Integer, Map<ContentDigestAlgorithm, byte[]>>
                 signatureSchemeApkContentDigest : signatureSchemeApkContentDigests.entrySet()) {
+            // Without GOST.
+            if (signatureSchemeApkContentDigest.getKey() == VERSION_APK_GOST_SIGNATURE_SCHEME) {
+                continue;
+            }
             List<Pair<Integer, byte[]>> apkDigests =
                     getApkDigests(signatureSchemeApkContentDigest.getValue());
             digests.put(

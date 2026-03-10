@@ -191,6 +191,10 @@ public class ApkSigner {
         mSigningCertificateLineage = signingCertificateLineage;
     }
 
+    private boolean isV4Only() {
+        return mV4SigningEnabled && !mV3SigningEnabled && !mV2SigningEnabled && !mV1SigningEnabled && !mGostSigningEnabled;
+    }
+
     /**
      * Signs the input APK and outputs the resulting signed APK. The input APK is not modified.
      *
@@ -388,7 +392,12 @@ public class ApkSigner {
                 } catch (ZipFormatException ex) {
                     throw new ApkFormatException("Bad source stamp entry");
                 }
-                continue; // Existing source stamp is handled below as needed.
+                // GOST uses full copy (as possible) of the source apk and does not suppose adding any new blocks except GOST.
+                // So all these blocks and additional data like zip comments of source stamp should be entirely copied.
+                // V4 does the same but does not add any new block, just copying with later external signing.
+                if (!mGostSigningEnabled && !isV4Only()) {
+                    continue; // Existing source stamp is handled below as needed.
+                }
             }
             ApkSignerEngine.InputJarEntryInstructions entryInstructions =
                     signerEngine.inputJarEntry(entryName);

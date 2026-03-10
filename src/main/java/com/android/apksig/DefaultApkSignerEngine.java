@@ -685,6 +685,10 @@ public class DefaultApkSignerEngine implements ApkSignerEngine {
                         || signatureBlock.getSecond() == Constants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID) {
                         mPreservedSignatureBlocks.add(signatureBlock);
                     }
+                    else if (signatureBlock.getSecond() == Constants.V1_SOURCE_STAMP_BLOCK_ID
+                        || signatureBlock.getSecond() == Constants.V2_SOURCE_STAMP_BLOCK_ID) {
+                        mPreservedSignatureBlocks.add(signatureBlock);
+                    }
                     else if (!DISCARDED_SIGNATURE_BLOCK_IDS.contains(signatureBlock.getSecond())) {
                         mPreservedSignatureBlocks.add(signatureBlock);
                     }
