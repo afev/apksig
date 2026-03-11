@@ -379,6 +379,7 @@ public class ApkSigner {
         byte[] sourceStampCertificateDigest = null;
         Map<String, CentralDirectoryRecord> outputCdRecordsByName =
                 new HashMap<>(inputCdRecords.size());
+        // Copying of all entries is provided by using --append-signature option (it allows to preserve all entries besides some below).
         for (final CentralDirectoryRecord inputCdRecord : inputCdRecordsSortedByLfhOffset) {
             String entryName = inputCdRecord.getName();
             if (Hints.PIN_BYTE_RANGE_ZIP_ENTRY_NAME.equals(entryName)) {
