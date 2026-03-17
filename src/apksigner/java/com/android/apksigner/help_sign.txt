@@ -35,7 +35,8 @@ certificate.
                       with block format APK Signature Scheme v2. The option is
                       allowed with --append-signature, --v1-signing-enabled false,
                       --v2-signing-enabled false, --v3-signing-enabled false,
-                      --v4-signing-enabled false only.
+                      --stamp-timestamp-enabled false, --v4-signing-enabled false,
+                      --v4-single-signing-enabled false only.
 
 --v3-signing-enabled  Whether to enable signing using APK Signature Scheme v3
                       (aka v3 signing scheme) introduced in Android P,
@@ -56,6 +57,12 @@ certificate.
                       and --v3-signing-enabled false, but it does copy of source
                       apk only (does not sign v2/v3) and signs it again replacing
                       previous idsig file.
+
+--v4-single-signing-enabled Whether to enable separate signing using APK Signature
+                      Scheme v4 without requiring v2/v3 signatures to be enabled.
+                      The option is allowed with --append-signature, --v1-signing-enabled
+                      false, --v2-signing-enabled false, --v3-signing-enabled false,
+                      --stamp-timestamp-enabled false, --v4-signing-enabled true only.
 
 --force-stamp-overwrite  Whether to overwrite existing source stamp in the
                       APK, if found. By default, it is set to false. It has no
