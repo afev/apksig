@@ -5,6 +5,12 @@
 Скачать и установить подходящий дистрибутив CSP 5.0 R4 или CSP 5.0 R3: https://cryptopro.ru/products/csp/downloads
 В состав CSP входит пробная лицензия.
 
+Для проверки ГОСТ подписи необходимо отключить усиленный контроль ключей `StrengthenedKeyUsageControl`, если он включен.
+Найти параметр `StrengthenedKeyUsageControl`, проверить его и задать ему значение `0` (отключить) можно в:
+* Windows: `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion\Parameters`
+* *nix: разделе `[Parameters]` конфига `/etc/opt/cprocsp/config64.ini`
+* Android: разделе `[Parameters]` конфига `config.ini` в ресурсах `res/raw` архива `SharedLibrary.aar`
+
 ## Подготовка Java CSP
 
 Скачать дистрибутив Java CSP 5.0-A R4 или R3 для Java 11+: https://cryptopro.ru/sites/default/files/private/csp/50/13700/java-csp-5.0.49196-A-d260d15b.zip или https://cryptopro.ru/sites/default/files/private/csp/50/13003/java-csp-5.0.45559-A-b34f3a2f.zip
@@ -74,6 +80,7 @@ java -Dkeytool.compat=true -Duse.cert.stub=true -cp /path/to/java-csp/* com.andr
 --v4-signature-file app.apk.idsig \
 app.apk
 ```
+Для проверки подписи должен быть отключен усиленный контроль ключа.
 
 Проверка штатным apksigner может быть выполнена так:
 ```
@@ -180,10 +187,10 @@ import com.android.apksig.util.DataSources;
 }
 ```
 Можно проверить в `result`:
-* общий статус `result.isVerified()` - функция должна быть true
-* статус `result.isVerifiedUsingGostScheme()` - функция должна быть true
-* наличие `result.getGostSchemeSigners()` - список подписантов должен быть непустым
-* наличие ошибок в `result.getGostSchemeSigners().get(i).getErrors()` - список ошибок подписанта должен быть непустым
+* общий статус `result.isVerified()` - функция должна вернуть true
+* статус `result.isVerifiedUsingGostScheme()` - функция должна вернуть true
+* наличие `result.getGostSchemeSigners()` - функция должна вернуть непустой список подписантов
+* наличие ошибок в `result.getGostSchemeSigners().get(i).getErrors()` - функция должна вернуть непустой список ошибок подписанта
 * сертификат ключа подписи в `result.getGostSchemeSigners().get(i).getCertificate()`
 * иное
 
