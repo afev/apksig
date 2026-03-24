@@ -652,6 +652,13 @@ public class ApkSigner {
             byte[] outputApkSigningBlock = outputApkSigningBlockRequest.getApkSigningBlock();
             outputApkSigningBlockRequest.done();
 
+            if (mGostSigningEnabled) {
+                if (padding > 0) {
+                    throw new IOException("Looks like apk is not aligned, padding " + padding
+                        + " byte(s) is required before Signing Block.");
+                }
+            }
+
             long fileSize =
                     outputCentralDirStartOffset
                             + outputCentralDirDataSource.size()
