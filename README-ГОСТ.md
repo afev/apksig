@@ -5,12 +5,6 @@
 Скачать и установить подходящий дистрибутив CSP 5.0 R4 или CSP 5.0 R3: https://cryptopro.ru/products/csp/downloads
 В состав CSP входит пробная лицензия.
 
-Для проверки ГОСТ подписи необходимо отключить усиленный контроль ключей `StrengthenedKeyUsageControl`, если он включен.
-Найти параметр `StrengthenedKeyUsageControl`, проверить его и задать ему значение `0` (отключить) можно в:
-* Windows: `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion\Parameters`
-* *nix: разделе `[Parameters]` конфига `/etc/opt/cprocsp/config64.ini`
-* Android: разделе `[Parameters]` конфига `config.ini` в ресурсах `res/raw` архива `SharedLibrary.aar`
-
 ## Подготовка Java CSP
 
 Скачать дистрибутив Java CSP 5.0-A R4 или R3 для Java 11+: https://cryptopro.ru/sites/default/files/private/csp/50/13700/java-csp-5.0.49196-A-d260d15b.zip или https://cryptopro.ru/sites/default/files/private/csp/50/13003/java-csp-5.0.45559-A-b34f3a2f.zip
@@ -21,6 +15,14 @@ Java CSP содержит несколько криптопровайдеров 
 * `ГОСТ` - криптопровайдер `JCSP`, класс `ru.CryptoPro.JCSP.JCSP`
 * `RSA` - криптопровайдер `JCSPRSA`, класс `ru.CryptoPro.JCSP.JCSPRSA`
 * `ECDSA` - криптопровайдер `JCSPECDSA`, класс `ru.CryptoPro.JCSP.JCSPECDSA`
+
+Если используется Java CSP R4 или старее, то для проверки ГОСТ подписи с помощью apksig необходимо отключить усиленный контроль ключей `StrengthenedKeyUsageControl`, если он включен.
+Найти параметр `StrengthenedKeyUsageControl`, проверить его и задать ему значение `0` (отключить) можно в:
+* Windows: `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion\Parameters`
+* *nix: раздел `[Parameters]` конфига `/etc/opt/cprocsp/config64.ini`
+* Android: раздел `[Parameters]` конфига `config.ini` в ресурсах `res/raw` архива `SharedLibrary.aar`
+
+В более новых версиях Java CSP отключение `StrengthenedKeyUsageControl` не требуется.
 
 ## Добавление apksig.jar
 
