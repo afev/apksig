@@ -5,6 +5,8 @@ import com.android.apksig.internal.util.Resources;
 import com.android.apksig.util.DataSource;
 import com.android.apksig.util.DataSources;
 
+import com.google.common.io.Files;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -90,6 +92,7 @@ public class GostSignerTest {
         assertTrue(result.isVerifiedUsingV1Scheme());
         assertTrue(result.isVerifiedUsingV2Scheme());
         assertGostVerified(result, signers.get(0).getCertificates().get(0));
+        copy(signedApk, "original-v1-v2-gost.apk");
     }
 
     @Test
@@ -111,6 +114,7 @@ public class GostSignerTest {
         assertTrue(result.isVerifiedUsingV2Scheme());
         assertTrue(result.isVerifiedUsingV3Scheme());
         assertGostVerified(result, signers.get(0).getCertificates().get(0));
+        copy(signedApk, "original-v1-v2-v3-gost.apk");
     }
 
     @Test
@@ -155,6 +159,7 @@ public class GostSignerTest {
         assertTrue(result.isVerifiedUsingV3Scheme());
         assertGostVerified(result, gostSigners.get(0).getCertificates().get(0));
         assertTrue(result.isVerifiedUsingV4Scheme());
+        copy(signedApk, "original-v1-v2-v3-gost-v4.apk");
     }
 
     @Test
@@ -176,6 +181,7 @@ public class GostSignerTest {
         assertTrue(result.isVerifiedUsingV2Scheme());
         assertTrue(result.isSourceStampVerified());
         assertGostVerified(result, signers.get(0).getCertificates().get(0));
+        copy(signedApk, "original-v1-v2-timestampv2-gost.apk");
     }
 
     @Test
@@ -198,6 +204,7 @@ public class GostSignerTest {
         assertTrue(result.isVerifiedUsingV3Scheme());
         assertTrue(result.isSourceStampVerified());
         assertGostVerified(result, signers.get(0).getCertificates().get(0));
+        copy(signedApk, "original-v1-v2-v3-timestampv2-gost.apk");
     }
 
     @Test
@@ -244,6 +251,53 @@ public class GostSignerTest {
         assertTrue(result.isSourceStampVerified());
         assertGostVerified(result, gostSigners.get(0).getCertificates().get(0));
         assertTrue(result.isVerifiedUsingV4Scheme());
+        copy(signedApk, "original-v1-v2-v3-timestampv2-gost-v4.apk");
+    }
+
+    /*
+    @Test
+    public void testVerifyApkAfterRotate_V1_V2_V3() throws Exception {
+        List<ApkSigner.SignerConfig> signers = Collections.singletonList(getDefaultSignerGostConfig());
+        File signedApk = sign(getDataSourceFromResources("gost-tests/original-v1-v2-v3-rotate.apk"),
+            new ApkSigner.Builder(signers)
+                .setV1SigningEnabled(false)
+                .setV2SigningEnabled(false)
+                .setV3SigningEnabled(false)
+                .setV4SigningEnabled(false)
+                .setSourceStampTimestampEnabled(false)
+                .setOtherSignersSignaturesPreserved(true) // --append-signature
+                .setGostSigningEnabled(true) // --gost-signing-enabled
+        );
+        ApkVerifier.Result result = verify(signedApk, false);
+        assertVerified(result);
+        assertTrue(result.isVerifiedUsingV1Scheme());
+        assertTrue(result.isVerifiedUsingV2Scheme());
+        assertTrue(result.isVerifiedUsingV3Scheme());
+        assertGostVerified(result, signers.get(0).getCertificates().get(0));
+        copy(signedApk, "original-v1-v2-v3-rotate-then-gost.apk");
+    }
+    */
+
+    @Test
+    public void testVerifyUnalignedApkAfter_V1_V2() throws Exception {
+        List<ApkSigner.SignerConfig> signers = Collections.singletonList(getDefaultSignerGostConfig());
+        try {
+            // Signing block will be aligned and previous signatures will be broken because of unaligned apk.
+            sign(getDataSourceFromResources("gost-tests/app-debug-unaligned-v2.apk"),
+                new ApkSigner.Builder(signers)
+                    .setV1SigningEnabled(false)
+                    .setV2SigningEnabled(false)
+                    .setV3SigningEnabled(false)
+                    .setV4SigningEnabled(false)
+                    .setSourceStampTimestampEnabled(false)
+                    .setOtherSignersSignaturesPreserved(true) // --append-signature
+                    .setGostSigningEnabled(true) // --gost-signing-enabled
+            );
+        } catch (IOException e) {
+            assertEquals("Looks like apk is not aligned, padding 2768 byte(s) is required before Signing Block.", e.getMessage());
+            return;
+        }
+        fail("Signing should fail.");
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -258,6 +312,12 @@ public class GostSignerTest {
             throws UnrecoverableKeyException, CertificateException, KeyStoreException, IOException,
             NoSuchAlgorithmException, NoSuchProviderException {
         return getDefaultSignerConfig("android_2013", "JCSPRSA");
+    }
+
+    private ApkSigner.SignerConfig getRotateSignerRsaConfig()
+            throws UnrecoverableKeyException, CertificateException, KeyStoreException, IOException,
+            NoSuchAlgorithmException, NoSuchProviderException {
+        return getDefaultSignerConfig("android_2026_rotate", "JCSPRSA");
     }
 
     private ApkSigner.SignerConfig getDefaultSignerConfig(String alias, String provider)
@@ -418,6 +478,14 @@ public class GostSignerTest {
             }
         }
         fail(apkId + " did not verify: " + msg);
+    }
+
+    private void copy(File in, String name) throws IOException {
+        if (false) {
+            File saved = new File(System.getProperty("user.dir"), "saved");
+            saved.mkdirs();
+            Files.copy(in, new File(saved, name));
+        }
     }
 
 }
