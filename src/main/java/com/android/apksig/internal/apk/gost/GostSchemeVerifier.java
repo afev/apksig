@@ -221,8 +221,8 @@ public class GostSchemeVerifier {
             PublicKey publicKey;
             try {
                 publicKey =
-                        KeyFactory.getInstance(keyAlgorithm).generatePublic(
-                                new X509EncodedKeySpec(publicKeyBytes, "TRUSTED")); // trust public key in strengthened key control mode
+                        KeyFactory.getInstance("TRUSTED_X509_ENCODED").generatePublic(
+                                new X509EncodedKeySpec(publicKeyBytes));
             } catch (Exception e) {
                 result.addError(ApkVerifier.Issue.V2_SIG_MALFORMED_PUBLIC_KEY, e);
                 return;
